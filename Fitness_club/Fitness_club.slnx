@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/FitnessClub/">
+    <Project Path="Domain.FitnessClub/Domain.FitnessClub.csproj" />
+    <Project Path="Domain.ValueObjects/Domain.ValueObjects.csproj" />
+  </Folder>
+  <Project Path="Fitness_club/Fitness_club.csproj" />
+</Solution>
