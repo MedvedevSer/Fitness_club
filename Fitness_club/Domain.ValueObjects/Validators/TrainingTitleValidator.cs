@@ -10,9 +10,13 @@ public class TrainingTitleValidator : IValidator<string>
     public void Validate(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             throw new ArgumentNullOrWhiteSpaceException(nameof(value));
+        }
 
         if (value.Length > MAX_LENGTH)
+        {
             throw new ArgumentLongValueException(nameof(value), value, MAX_LENGTH);
+        }
     }
 }
