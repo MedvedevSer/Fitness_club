@@ -1,0 +1,156 @@
+﻿using Domain.FitnessClub.Base;
+using Domain.FitnessClub.Enums;
+using Domain.FitnessClub.Exceptions;
+using Domain.ValueObjects;
+
+namespace Domain.FitnessClub.Entities;
+
+public class Training : Entity<Guid>
+{
+    public TrainingTitle Title { get; private set; }
+    public Description Description { get; private set; }
+    public TrainingTime Time { get; private set; }
+    public int MaxParticipants { get; private set; }
+    public int AvailablePlaces { get; private set; }
+    public string Room { get; private set; }
+    public TrainingStatus Status { get; private set; }
+    public DateTime CreatedAt { get; }
+    public DateTime? LastModifiedAt { get; private set; }
+
+    public Guid TrainerId { get; private set; }
+    public Trainer? Trainer { get; private set; }
+
+    private readonly List<Registration> _registrations = new();
+    public IReadOnlyCollection<Registration> Registrations => _registrations.AsReadOnly();
+
+    protected Training()
+    {
+        Title = null!;
+        Description = null!;
+        Time = null!;
+        Room = null!;
+    }
+
+    public Training(
+        Trainer trainer,
+        TrainingTitle title,
+        Description description,
+        TrainingTime time,
+        int maxParticipants,
+        string room)
+        : this(Guid.NewGuid(), trainer, title, description, time, maxParticipants, room, DateTime.UtcNow, null)
+    {
+    }
+
+    public Training(
+        Guid id,
+        Trainer trainer,
+        TrainingTitle title,
+        Description description,
+        TrainingTime time,
+        int maxParticipants,
+        string room,
+        DateTime createdAt,
+        DateTime? lastModifiedAt)
+        : base(id)
+    {
+        Trainer = trainer ?? throw new ArgumentNullException(nameof(trainer));
+        TrainerId = trainer.Id;
+        Title = title ?? throw new ArgumentNullException(nameof(title));
+        Description = description ?? throw new ArgumentNullException(nameof(description));
+        Time = time ?? throw new ArgumentNullException(nameof(time));
+        MaxParticipants = maxParticipants;
+        AvailablePlaces = maxParticipants;
+        Room = room ?? throw new ArgumentNullException(nameof(room));
+        Status = TrainingStatus.Scheduled;
+        CreatedAt = createdAt;
+        LastModifiedAt = lastModifiedAt;
+    }
+
+    public Registration RegisterClient(Client client)
+    {
+        if (client == null) throw new ArgumentNullException(nameof(client));
+
+        if (Status != TrainingStatus.Scheduled)
+            throw new InvalidOperationException("Cannot register for cancelled or completed training.");
+
+        if (Time.IsPast)
+            throw new InvalidOperationException("Cannot register for past training.");
+
+        if (AvailablePlaces <= 0)
+            throw new NoAvailablePlacesException();
+
+        if (_registrations.Any(r => r.ClientId == client.Id && r.IsActive))
+            throw new ClientAlreadyRegisteredException(client, this);
+
+        var registration = new Registration(this, client);
+        _registrations.Add(registration);
+        AvailablePlaces--;
+
+        return registration;
+    }
+
+    public bool CancelRegistration(Registration registration)
+    {
+        if (registration == null) throw new ArgumentNullException(nameof(registration));
+        if (registration.Training != this)
+            throw new InvalidOperationException("Registration does not belong to this training.");
+        if (!_registrations.Contains(registration))
+            throw new InvalidOperationException("Registration not found in training.");
+
+        var result = registration.Cancel();
+        if (result) AvailablePlaces++;
+        return result;
+    }
+
+    public bool Cancel()
+    {
+        if (Status == TrainingStatus.Cancelled) return false;
+        if (Time.IsPast)
+            throw new InvalidOperationException("Cannot cancel past training.");
+
+        Status = TrainingStatus.Cancelled;
+        foreach (var registration in _registrations.Where(r => r.IsActive))
+        {
+            registration.Cancel();
+        }
+        AvailablePlaces = 0;
+        return true;
+    }
+
+    public bool Complete()
+    {
+        if (!Time.IsPast) return false;
+        if (Status == TrainingStatus.Completed) return false;
+
+        Status = TrainingStatus.Completed;
+        return true;
+    }
+
+    public bool UpdateDetails(TrainingTitle newTitle, Description newDescription, string newRoom)
+    {
+        bool updated = false;
+        if (Title != newTitle) { Title = newTitle; updated = true; }
+        if (Description != newDescription) { Description = newDescription; updated = true; }
+        if (Room != newRoom) { Room = newRoom; updated = true; }
+        return updated;
+    }
+
+    public bool Reschedule(TrainingTime newTime)
+    {
+        if (Time == newTime) return false;
+        if (Status != TrainingStatus.Scheduled)
+            throw new InvalidOperationException("Cannot reschedule cancelled or completed training.");
+
+        Time = newTime;
+        return true;
+    }
+
+    public void SetModificationDate(DateTime modificationDate)
+    {
+        LastModifiedAt = modificationDate;
+    }
+
+    public bool HasAvailablePlaces => AvailablePlaces > 0;
+    public int ConfirmedRegistrationsCount => _registrations.Count(r => r.IsActive);
+}
