@@ -4,21 +4,17 @@ using Domain.ValueObjects;
 
 namespace Domain.FitnessClub.Entities;
 
-public class Client : Entity<Guid>
+public class Client(Guid id, Username username) : Entity<Guid>(id)
 {
-    private readonly List<Registration> _registrations = [];
-    public IReadOnlyCollection<Registration> Registrations => _registrations.AsReadOnly();
+    private readonly ICollection<Registration> _registrations = [];
 
-    public Username Username { get; private set; }
+    public Username Username { get; private set; } = username ?? throw new ArgumentNullException(nameof(username));
 
-    protected Client() : base(Guid.NewGuid()) { Username = null!; }
+    public IReadOnlyCollection<Registration> Registrations => _registrations.ToList().AsReadOnly();
+
+    protected Client() : this(Guid.NewGuid(), null!) { }
 
     public Client(Username username) : this(Guid.NewGuid(), username) { }
-
-    public Client(Guid id, Username username) : base(id)
-    {
-        Username = username ?? throw new ArgumentNullValueException(nameof(username));
-    }
 
     public bool ChangeUsername(Username newUsername)
     {

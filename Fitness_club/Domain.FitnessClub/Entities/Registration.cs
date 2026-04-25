@@ -12,13 +12,14 @@ public class Registration : Entity<Guid>
     public Client? Client { get; }
     public DateTime RegistrationDate { get; }
     public RegistrationStatus Status { get; private set; }
+    public bool IsActive => Status == RegistrationStatus.Confirmed;
+    public bool IsAttended => Status == RegistrationStatus.Attended;
+    public bool IsCancelled => Status == RegistrationStatus.Cancelled;
 
     protected Registration() : base(Guid.NewGuid()) { }
 
-    public Registration(Training training, Client client)
-        : this(Guid.NewGuid(), training, client, DateTime.UtcNow, RegistrationStatus.Confirmed) { }
-
-    public Registration(Guid id, Training training, Client client, DateTime registrationDate, RegistrationStatus status) : base(id)
+    public Registration(Guid id, Training training, Client client, DateTime registrationDate, RegistrationStatus status)
+        : base(id)
     {
         Training = training ?? throw new ArgumentNullValueException(nameof(training));
         TrainingId = training.Id;
@@ -28,16 +29,19 @@ public class Registration : Entity<Guid>
         Status = status;
     }
 
+    public Registration(Training training, Client client)
+        : this(Guid.NewGuid(), training, client, DateTime.UtcNow, RegistrationStatus.Confirmed) { }
+
     public bool Cancel()
     {
         if (Status == RegistrationStatus.Cancelled) return false;
-        if (Status == RegistrationStatus.Attended)
-            throw new InvalidOperationException("Cannot cancel attended registration.");
-        if (Training!.Time.IsPast)
-            throw new InvalidOperationException("Cannot cancel past training registration.");
 
-        Status = RegistrationStatus.Cancelled;
-        return true;
+        return Status switch
+        {
+            RegistrationStatus.Attended => throw new InvalidOperationException("Cannot cancel attended registration."),
+            RegistrationStatus.Confirmed => CancelConfirmedRegistration(),
+            _ => false
+        };
     }
 
     public bool MarkAttended()
@@ -50,7 +54,12 @@ public class Registration : Entity<Guid>
         return true;
     }
 
-    public bool IsActive => Status == RegistrationStatus.Confirmed;
-    public bool IsAttended => Status == RegistrationStatus.Attended;
-    public bool IsCancelled => Status == RegistrationStatus.Cancelled;
+    private bool CancelConfirmedRegistration()
+    {
+        if (Training!.Time.IsPast)
+            throw new InvalidOperationException("Cannot cancel past training registration.");
+
+        Status = RegistrationStatus.Cancelled;
+        return true;
+    }
 }
