@@ -3,9 +3,4 @@ using Domain.ValueObjects.Validators;
 
 namespace Domain.ValueObjects;
 
-public class Username : ValueObject<string>
-{
-    public Username(string value) : base(new UsernameValidator(), value)
-    {
-    }
-}
+public class Username(string name) : ValueObject<string>(new UsernameValidator(), name);

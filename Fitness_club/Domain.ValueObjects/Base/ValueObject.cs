@@ -9,13 +9,15 @@ public abstract class ValueObject<T> : IEquatable<ValueObject<T>>
     protected ValueObject(IValidator<T> validator, T value)
     {
         if (validator == null)
-            throw new ValidatorNullException(nameof(validator));
+            throw new ValidatorNullException(GetType().FullName ?? string.Empty, "Validator must be specified for type");
         validator.Validate(value);
         Value = value;
     }
 
     public override string ToString() => Value?.ToString() ?? GetType().ToString();
+
     public override int GetHashCode() => Value?.GetHashCode() ?? 0;
+
     public override bool Equals(object? other) => Equals(other as ValueObject<T>);
 
     public bool Equals(ValueObject<T>? other)

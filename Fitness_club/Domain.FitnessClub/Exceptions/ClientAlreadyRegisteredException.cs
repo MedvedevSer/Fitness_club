@@ -2,18 +2,8 @@
 
 namespace Domain.FitnessClub.Exceptions;
 
-/// <summary>
-/// Исключение: клиент уже записан на тренировку
-/// </summary>
-public class ClientAlreadyRegisteredException : InvalidOperationException
+public class ClientAlreadyRegisteredException(Client client, Training training) : InvalidOperationException($"Client {client.Username.Value} already registered for training {training.Title.Value} (training id = {training.Id})")
 {
-    public Client Client { get; }
-    public Training Training { get; }
-
-    public ClientAlreadyRegisteredException(Client client, Training training)
-        : base($"Client {client.Username} is already registered for training '{training.Title}' (id = {training.Id}).")
-    {
-        Client = client;
-        Training = training;
-    }
+    public Client Client => client;
+    public Training Training => training;
 }

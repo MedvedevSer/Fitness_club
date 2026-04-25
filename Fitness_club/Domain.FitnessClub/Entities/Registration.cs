@@ -1,37 +1,28 @@
 ﻿using Domain.FitnessClub.Base;
 using Domain.FitnessClub.Enums;
+using Domain.FitnessClub.Exceptions;
 
 namespace Domain.FitnessClub.Entities;
 
 public class Registration : Entity<Guid>
 {
-    public Guid TrainingId { get; private set; }
-    public Training? Training { get; private set; }
-
-    public Guid ClientId { get; private set; }
-    public Client? Client { get; private set; }
-
-    public DateTime RegistrationDate { get; private set; }
+    public Guid TrainingId { get; }
+    public Training? Training { get; }
+    public Guid ClientId { get; }
+    public Client? Client { get; }
+    public DateTime RegistrationDate { get; }
     public RegistrationStatus Status { get; private set; }
 
-    protected Registration() { }
+    protected Registration() : base(Guid.NewGuid()) { }
 
     public Registration(Training training, Client client)
-        : this(Guid.NewGuid(), training, client, DateTime.UtcNow, RegistrationStatus.Confirmed)
-    {
-    }
+        : this(Guid.NewGuid(), training, client, DateTime.UtcNow, RegistrationStatus.Confirmed) { }
 
-    public Registration(
-        Guid id,
-        Training training,
-        Client client,
-        DateTime registrationDate,
-        RegistrationStatus status)
-        : base(id)
+    public Registration(Guid id, Training training, Client client, DateTime registrationDate, RegistrationStatus status) : base(id)
     {
-        Training = training ?? throw new ArgumentNullException(nameof(training));
+        Training = training ?? throw new ArgumentNullValueException(nameof(training));
         TrainingId = training.Id;
-        Client = client ?? throw new ArgumentNullException(nameof(client));
+        Client = client ?? throw new ArgumentNullValueException(nameof(client));
         ClientId = client.Id;
         RegistrationDate = registrationDate;
         Status = status;

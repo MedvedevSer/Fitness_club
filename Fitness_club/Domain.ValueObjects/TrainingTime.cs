@@ -3,7 +3,8 @@ using Domain.ValueObjects.Validators;
 
 namespace Domain.ValueObjects;
 
-public class TrainingTime : ValueObject<(DateTime StartTime, int DurationMinutes)>
+public class TrainingTime(DateTime startTime, int durationMinutes)
+    : ValueObject<(DateTime StartTime, int DurationMinutes)>(new TrainingTimeValidator(), (startTime, durationMinutes))
 {
     public DateTime StartTime => Value.StartTime;
     public int DurationMinutes => Value.DurationMinutes;
@@ -11,13 +12,6 @@ public class TrainingTime : ValueObject<(DateTime StartTime, int DurationMinutes
     public bool IsPast => StartTime < DateTime.UtcNow;
     public bool CanBeCancelled => StartTime > DateTime.UtcNow.AddHours(2);
 
-    public TrainingTime(DateTime startTime, int durationMinutes)
-        : base(new TrainingTimeValidator(), (startTime, durationMinutes))
-    {
-    }
-
     public bool Overlaps(TrainingTime other)
-    {
-        return StartTime < other.EndTime && other.StartTime < EndTime;
-    }
+        => StartTime < other.EndTime && other.StartTime < EndTime;
 }

@@ -1,12 +1,8 @@
-﻿namespace Domain.FitnessClub.Exceptions;
+﻿using Domain.FitnessClub.Entities;
 
-/// <summary>
-/// Исключение: нет свободных мест на тренировку
-/// </summary>
-public class NoAvailablePlacesException : InvalidOperationException
+namespace Domain.FitnessClub.Exceptions;
+
+public class NoAvailablePlacesException(Training training) : InvalidOperationException($"No available places for training {training.Title.Value} (id = {training.Id})")
 {
-    public NoAvailablePlacesException()
-        : base("No available places for this training.")
-    {
-    }
+    public Training Training => training;
 }

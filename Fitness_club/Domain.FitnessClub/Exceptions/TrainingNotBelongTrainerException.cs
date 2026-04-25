@@ -2,18 +2,9 @@
 
 namespace Domain.FitnessClub.Exceptions;
 
-/// <summary>
-/// Исключение: тренировка не принадлежит тренеру
-/// </summary>
-public class TrainingNotBelongTrainerException : InvalidOperationException
+public class TrainingNotBelongTrainerException(Training training, Trainer trainer)
+    : InvalidOperationException($"Training {training.Title.Value} does not belong to trainer {trainer.Username.Value} (training id = {training.Id})")
 {
-    public Training Training { get; }
-    public Trainer Trainer { get; }
-
-    public TrainingNotBelongTrainerException(Training training, Trainer trainer)
-        : base($"The training '{training.Title}' is not in the trainer's training sequence (trainer {trainer.Username}, training id = {training.Id}).")
-    {
-        Training = training;
-        Trainer = trainer;
-    }
+    public Training Training => training;
+    public Trainer Trainer => trainer;
 }

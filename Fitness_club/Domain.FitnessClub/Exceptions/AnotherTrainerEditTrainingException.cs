@@ -2,18 +2,9 @@
 
 namespace Domain.FitnessClub.Exceptions;
 
-/// <summary>
-/// Исключение: тренер пытается редактировать чужую тренировку
-/// </summary>
-public class AnotherTrainerEditTrainingException : InvalidOperationException
+public class AnotherTrainerEditTrainingException(Training training, Trainer trainer)
+    : InvalidOperationException($"Trainer {trainer.Username.Value} cannot edit training {training.Title.Value} created by {training.Trainer?.Username.Value} (training id = {training.Id})")
 {
-    public Training Training { get; }
-    public Trainer Trainer { get; }
-
-    public AnotherTrainerEditTrainingException(Training training, Trainer trainer)
-        : base($"The trainer {trainer.Username} can't edit the training '{training.Title}' owned by the trainer {training.Trainer?.Username} (training id = {training.Id}).")
-    {
-        Training = training;
-        Trainer = trainer;
-    }
+    public Training Training => training;
+    public Trainer Trainer => trainer;
 }

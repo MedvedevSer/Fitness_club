@@ -6,40 +6,28 @@ namespace Domain.FitnessClub.Entities;
 
 public class Trainer : Entity<Guid>
 {
-    public Username Username { get; private set; }
-
-    private readonly List<Training> _trainings = new();
+    private readonly List<Training> _trainings = [];
     public IReadOnlyCollection<Training> Trainings => _trainings.AsReadOnly();
 
-    protected Trainer()
-    {
-        Username = null!;
-    }
+    public Username Username { get; private set; }
 
-    public Trainer(Username username) : this(Guid.NewGuid(), username)
-    {
-    }
+    protected Trainer() : base(Guid.NewGuid()) { Username = null!; }
+
+    public Trainer(Username username) : this(Guid.NewGuid(), username) { }
 
     public Trainer(Guid id, Username username) : base(id)
     {
-        Username = username ?? throw new ArgumentNullException(nameof(username));
+        Username = username ?? throw new ArgumentNullValueException(nameof(username));
     }
 
     public bool ChangeUsername(Username newUsername)
     {
-        if (newUsername == null) throw new ArgumentNullException(nameof(newUsername));
         if (Username == newUsername) return false;
-
         Username = newUsername;
         return true;
     }
 
-    public Training CreateTraining(
-        TrainingTitle title,
-        Description description,
-        TrainingTime time,
-        int maxParticipants,
-        string room)
+    public Training CreateTraining(TrainingTitle title, Description description, TrainingTime time, int maxParticipants, string room)
     {
         if (HasTrainingAt(time))
             throw new InvalidOperationException("Trainer already has a training at this time.");
@@ -56,9 +44,9 @@ public class Trainer : Entity<Guid>
         if (!_trainings.Contains(training))
             throw new TrainingNotBelongTrainerException(training, this);
 
-        var isEdited = training.UpdateDetails(newTitle, newDescription, newRoom);
-        if (isEdited) training.SetModificationDate(DateTime.UtcNow);
-        return isEdited;
+        var updated = training.UpdateDetails(newTitle, newDescription, newRoom);
+        if (updated) training.SetModificationDate(DateTime.UtcNow);
+        return updated;
     }
 
     public bool RescheduleTraining(Training training, TrainingTime newTime)
@@ -70,9 +58,9 @@ public class Trainer : Entity<Guid>
         if (HasTrainingAt(newTime, training.Id))
             throw new InvalidOperationException("New time conflicts with another training.");
 
-        var isRescheduled = training.Reschedule(newTime);
-        if (isRescheduled) training.SetModificationDate(DateTime.UtcNow);
-        return isRescheduled;
+        var rescheduled = training.Reschedule(newTime);
+        if (rescheduled) training.SetModificationDate(DateTime.UtcNow);
+        return rescheduled;
     }
 
     public bool CancelTraining(Training training)
@@ -85,8 +73,6 @@ public class Trainer : Entity<Guid>
         return training.Cancel();
     }
 
-    private bool HasTrainingAt(TrainingTime time, Guid? excludeTrainingId = null)
-    {
-        return _trainings.Any(t => t.Id != excludeTrainingId && t.Time.Overlaps(time));
-    }
+    private bool HasTrainingAt(TrainingTime time, Guid? excludeId = null)
+        => _trainings.Any(t => t.Id != excludeId && t.Time.Overlaps(time));
 }

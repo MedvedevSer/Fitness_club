@@ -5,21 +5,13 @@ namespace Domain.ValueObjects.Validators;
 
 public class DescriptionValidator : IValidator<string>
 {
-    public static int MAX_LENGTH => 500;
+    public const int MAX_LENGTH = 500;
 
     public void Validate(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentNullOrWhiteSpaceException(nameof(value));
-        }
-
+            throw new ArgumentNullOrWhiteSpaceException(nameof(value), ExceptionMessages.DESCRIPTION_NOT_NULL_OR_WHITE_SPACE);
         if (value.Length > MAX_LENGTH)
-        {
-            throw new ArgumentLongValueException(
-                paramName: nameof(value),
-                value: value,
-                maxLength: MAX_LENGTH);
-        }
+            throw new DescriptionLongValueException(value, MAX_LENGTH);
     }
 }

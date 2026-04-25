@@ -1,4 +1,4 @@
 ﻿namespace Domain.ValueObjects.Exceptions;
 
-public class ValidatorNullException(string paramName)
-    : ArgumentNullException(paramName, $"Validator \"{paramName}\" must be specified for type.");
+internal class ValidatorNullException(string paramName, string message)
+    : ArgumentNullException(paramName, message);

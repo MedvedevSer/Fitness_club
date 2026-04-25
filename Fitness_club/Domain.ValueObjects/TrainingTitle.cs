@@ -3,9 +3,4 @@ using Domain.ValueObjects.Validators;
 
 namespace Domain.ValueObjects;
 
-public class TrainingTitle : ValueObject<string>
-{
-    public TrainingTitle(string value) : base(new TrainingTitleValidator(), value)
-    {
-    }
-}
+public class TrainingTitle(string title) : ValueObject<string>(new TrainingTitleValidator(), title);
