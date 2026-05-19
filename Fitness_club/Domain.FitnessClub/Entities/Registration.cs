@@ -6,60 +6,45 @@ namespace Domain.FitnessClub.Entities;
 
 public class Registration : Entity<Guid>
 {
-    public Guid TrainingId { get; }
-    public Training? Training { get; }
-    public Guid ClientId { get; }
-    public Client? Client { get; }
+    public Training Training { get; }
+    public Client Client { get; }
     public DateTime RegistrationDate { get; }
     public RegistrationStatus Status { get; private set; }
+
     public bool IsActive => Status == RegistrationStatus.Confirmed;
-    public bool IsAttended => Status == RegistrationStatus.Attended;
-    public bool IsCancelled => Status == RegistrationStatus.Cancelled;
 
-    protected Registration() : base(Guid.NewGuid()) { }
-
-    public Registration(Guid id, Training training, Client client, DateTime registrationDate, RegistrationStatus status)
-        : base(id)
-    {
-        Training = training ?? throw new ArgumentNullValueException(nameof(training));
-        TrainingId = training.Id;
-        Client = client ?? throw new ArgumentNullValueException(nameof(client));
-        ClientId = client.Id;
-        RegistrationDate = registrationDate;
-        Status = status;
-    }
+    protected Registration() { }
 
     public Registration(Training training, Client client)
         : this(Guid.NewGuid(), training, client, DateTime.UtcNow, RegistrationStatus.Confirmed) { }
 
-    public bool Cancel()
+    protected Registration(Guid id, Training training, Client client, DateTime registrationDate, RegistrationStatus status)
+        : base(id)
     {
-        if (Status == RegistrationStatus.Cancelled) return false;
-
-        return Status switch
-        {
-            RegistrationStatus.Attended => throw new InvalidOperationException("Cannot cancel attended registration."),
-            RegistrationStatus.Confirmed => CancelConfirmedRegistration(),
-            _ => false
-        };
+        Training = training ?? throw new ArgumentNullValueException(nameof(training));
+        Client = client ?? throw new ArgumentNullValueException(nameof(client));
+        RegistrationDate = registrationDate;
+        Status = status;
     }
 
-    public bool MarkAttended()
+    public bool Cancel(Trainer trainer)
     {
-        if (Status != RegistrationStatus.Confirmed) return false;
-        if (!Training!.Time.IsPast)
-            throw new InvalidOperationException("Cannot mark future training as attended.");
+        if (trainer != Training.Trainer) return false;
+        if (Status == RegistrationStatus.Cancelled) return false;
+        if (Status == RegistrationStatus.Attended) throw new InvalidOperationException("Cannot cancel attended registration.");
+        if (Training.Time.IsPast) throw new InvalidOperationException("Cannot cancel past training registration.");
 
-        Status = RegistrationStatus.Attended;
+        Status = RegistrationStatus.Cancelled;
         return true;
     }
 
-    private bool CancelConfirmedRegistration()
+    public bool MarkAttended(Trainer trainer)
     {
-        if (Training!.Time.IsPast)
-            throw new InvalidOperationException("Cannot cancel past training registration.");
+        if (trainer != Training.Trainer) return false;
+        if (Status != RegistrationStatus.Confirmed) return false;
+        if (!Training.Time.IsPast) throw new InvalidOperationException("Cannot mark future training as attended.");
 
-        Status = RegistrationStatus.Cancelled;
+        Status = RegistrationStatus.Attended;
         return true;
     }
 }

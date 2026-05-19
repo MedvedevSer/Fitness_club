@@ -18,34 +18,21 @@ public class Training : Entity<Guid>
     public TrainingStatus Status { get; private set; }
     public DateTime CreatedAt { get; }
     public DateTime? LastModifiedAt { get; private set; }
-    public Guid TrainerId { get; }
-    public Trainer? Trainer { get; }
+    public Trainer Trainer { get; }
     public bool IsActive => Status == TrainingStatus.Scheduled;
     public IReadOnlyCollection<Registration> Registrations => _registrations.ToList().AsReadOnly();
     public int ConfirmedRegistrationsCount => _registrations.Count(r => r.IsActive);
     public bool HasAvailablePlaces => AvailablePlaces > 0;
 
-    protected Training() : base(Guid.NewGuid())
-    {
-        Title = null!;
-        Description = null!;
-        Time = null!;
-        Room = null!;
-    }
+    protected Training() { }
 
-    public Training(
-        Guid id,
-        Trainer trainer,
-        TrainingTitle title,
-        Description description,
-        TrainingTime time,
-        int maxParticipants,
-        string room,
-        DateTime createdAt,
-        DateTime? lastModifiedAt) : base(id)
+    public Training(Trainer trainer, TrainingTitle title, Description description, TrainingTime time, int maxParticipants, string room)
+        : this(Guid.NewGuid(), trainer, title, description, time, maxParticipants, room, DateTime.UtcNow, null) { }
+
+    protected Training(Guid id, Trainer trainer, TrainingTitle title, Description description, TrainingTime time, int maxParticipants, string room, DateTime createdAt, DateTime? lastModifiedAt)
+        : base(id)
     {
         Trainer = trainer ?? throw new ArgumentNullValueException(nameof(trainer));
-        TrainerId = trainer.Id;
         Title = title ?? throw new ArgumentNullValueException(nameof(title));
         Description = description ?? throw new ArgumentNullValueException(nameof(description));
         Time = time ?? throw new ArgumentNullValueException(nameof(time));
@@ -57,34 +44,40 @@ public class Training : Entity<Guid>
         LastModifiedAt = lastModifiedAt;
     }
 
-    public Training(Trainer trainer, TrainingTitle title, Description description, TrainingTime time, int maxParticipants, string room)
-        : this(Guid.NewGuid(), trainer, title, description, time, maxParticipants, room, DateTime.UtcNow, null) { }
-
     public Registration RegisterClient(Client client)
     {
         if (client == null) throw new ArgumentNullValueException(nameof(client));
+        if (Status != TrainingStatus.Scheduled)
+            throw new InvalidOperationException("Cannot register for cancelled or completed training.");
+        if (Time.IsPast)
+            throw new InvalidOperationException("Cannot register for past training.");
+        if (AvailablePlaces <= 0)
+            throw new NoAvailablePlacesException(this);
+        if (_registrations.Any(r => r.Client == client && r.IsActive))
+            throw new ClientAlreadyRegisteredException(client, this);
 
-        return Status switch
-        {
-            TrainingStatus.Scheduled => RegisterActiveClient(client),
-            _ => throw new InvalidOperationException("Cannot register for cancelled or completed training.")
-        };
+        var registration = new Registration(this, client);
+        _registrations.Add(registration);
+        AvailablePlaces--;
+        return registration;
     }
 
-    public bool Cancel()
+    public bool Cancel(Trainer trainer)
     {
+        if (trainer != Trainer) return false;
         if (Status == TrainingStatus.Cancelled) return false;
-        if (Time.IsPast) throw new InvalidOperationException("Cannot cancel past training.");
+        if (Time.IsPast) throw new CannotCancelPastTrainingException(this);
 
         Status = TrainingStatus.Cancelled;
         foreach (var reg in _registrations.Where(r => r.IsActive))
-            reg.Cancel();
+            reg.Cancel(trainer);
         AvailablePlaces = 0;
         return true;
     }
 
-    public bool Complete()
+    public bool Complete(Trainer trainer)
     {
+        if (trainer != Trainer) return false;
         if (!Time.IsPast) return false;
         if (Status == TrainingStatus.Completed) return false;
 
@@ -92,39 +85,27 @@ public class Training : Entity<Guid>
         return true;
     }
 
-    public bool UpdateDetails(TrainingTitle newTitle, Description newDescription, string newRoom)
+    public bool UpdateDetails(Trainer trainer, TrainingTitle newTitle, Description newDescription, string newRoom)
     {
+        if (trainer != Trainer) return false;
+
         var updated = false;
         if (Title != newTitle) { Title = newTitle; updated = true; }
         if (Description != newDescription) { Description = newDescription; updated = true; }
         if (Room != newRoom) { Room = newRoom; updated = true; }
+        if (updated) LastModifiedAt = DateTime.UtcNow;
         return updated;
     }
 
-    public bool Reschedule(TrainingTime newTime)
+    public bool Reschedule(Trainer trainer, TrainingTime newTime)
     {
+        if (trainer != Trainer) return false;
         if (Time == newTime) return false;
         if (Status != TrainingStatus.Scheduled)
             throw new InvalidOperationException("Cannot reschedule cancelled or completed training.");
 
         Time = newTime;
+        LastModifiedAt = DateTime.UtcNow;
         return true;
-    }
-
-    public void SetModificationDate(DateTime date) => LastModifiedAt = date;
-
-    private Registration RegisterActiveClient(Client client)
-    {
-        if (Time.IsPast)
-            throw new InvalidOperationException("Cannot register for past training.");
-        if (AvailablePlaces <= 0)
-            throw new NoAvailablePlacesException(this);
-        if (_registrations.Any(r => r.ClientId == client.Id && r.IsActive))
-            throw new ClientAlreadyRegisteredException(client, this);
-
-        var registration = new Registration(this, client);
-        _registrations.Add(registration);
-        AvailablePlaces--;
-        return registration;
     }
 }

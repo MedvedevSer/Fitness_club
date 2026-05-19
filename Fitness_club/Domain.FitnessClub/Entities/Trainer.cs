@@ -4,15 +4,20 @@ using Domain.ValueObjects;
 
 namespace Domain.FitnessClub.Entities;
 
-public class Trainer(Guid id, Username username) : Entity<Guid>(id)
+public class Trainer : Entity<Guid>
 {
     private readonly ICollection<Training> _trainings = [];
 
-    public Username Username { get; private set; } = username ?? throw new ArgumentNullException(nameof(username));
+    public Username Username { get; private set; }
 
     public IReadOnlyCollection<Training> Trainings => _trainings.ToList().AsReadOnly();
 
-    protected Trainer() : this(Guid.NewGuid(), null!) { }
+    protected Trainer() { }
+
+    public Trainer(Guid id, Username username) : base(id)
+    {
+        Username = username ?? throw new ArgumentNullValueException(nameof(username));
+    }
 
     public Trainer(Username username) : this(Guid.NewGuid(), username) { }
 
@@ -26,7 +31,7 @@ public class Trainer(Guid id, Username username) : Entity<Guid>(id)
     public Training CreateTraining(TrainingTitle title, Description description, TrainingTime time, int maxParticipants, string room)
     {
         if (HasTrainingAt(time))
-            throw new InvalidOperationException("Trainer already has a training at this time.");
+            throw new TrainerAlreadyHasTrainingAtTimeException(this, time);
 
         var training = new Training(this, title, description, time, maxParticipants, room);
         _trainings.Add(training);
@@ -40,9 +45,7 @@ public class Trainer(Guid id, Username username) : Entity<Guid>(id)
         if (!_trainings.Contains(training))
             throw new TrainingNotBelongTrainerException(training, this);
 
-        var updated = training.UpdateDetails(newTitle, newDescription, newRoom);
-        if (updated) training.SetModificationDate(DateTime.UtcNow);
-        return updated;
+        return training.UpdateDetails(this, newTitle, newDescription, newRoom);
     }
 
     public bool RescheduleTraining(Training training, TrainingTime newTime)
@@ -51,12 +54,10 @@ public class Trainer(Guid id, Username username) : Entity<Guid>(id)
             throw new AnotherTrainerEditTrainingException(training, this);
         if (!_trainings.Contains(training))
             throw new TrainingNotBelongTrainerException(training, this);
-        if (HasTrainingAt(newTime, training.Id))
-            throw new InvalidOperationException("New time conflicts with another training.");
+        if (HasTrainingAt(newTime, training))
+            throw new TrainerAlreadyHasTrainingAtTimeException(this, newTime);
 
-        var rescheduled = training.Reschedule(newTime);
-        if (rescheduled) training.SetModificationDate(DateTime.UtcNow);
-        return rescheduled;
+        return training.Reschedule(this, newTime);
     }
 
     public bool CancelTraining(Training training)
@@ -65,10 +66,22 @@ public class Trainer(Guid id, Username username) : Entity<Guid>(id)
             throw new AnotherTrainerEditTrainingException(training, this);
         if (!_trainings.Contains(training))
             throw new TrainingNotBelongTrainerException(training, this);
+        if (training.Time.IsPast)
+            throw new CannotCancelPastTrainingException(training);
 
-        return training.Cancel();
+        return training.Cancel(this);
     }
 
-    private bool HasTrainingAt(TrainingTime time, Guid? excludeId = null)
-        => _trainings.Any(t => t.Id != excludeId && t.Time.Overlaps(time));
+    public bool CompleteTraining(Training training)
+    {
+        if (training.Trainer != this)
+            throw new AnotherTrainerEditTrainingException(training, this);
+        if (!_trainings.Contains(training))
+            throw new TrainingNotBelongTrainerException(training, this);
+
+        return training.Complete(this);
+    }
+
+    private bool HasTrainingAt(TrainingTime time, Training? excludeTraining = null)
+        => _trainings.Any(t => t != excludeTraining && t.Time.Overlaps(time));
 }
