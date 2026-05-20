@@ -1,7 +1,13 @@
 <Solution>
-  <Folder Name="/FitnessClub/">
+  <Folder Name="/Domain/">
     <Project Path="Domain.FitnessClub/Domain.FitnessClub.csproj" />
     <Project Path="Domain.ValueObjects/Domain.ValueObjects.csproj" />
+  </Folder>
+  <Folder Name="/Infrastructure/">
+    <Project Path="../Infrastructure/FitnessClub.Infrastructure.EntityFramework/FitnessClub.Infrastructure.EntityFramework.csproj" Id="0e7ca200-6835-4dac-9947-e74c10fef97a" />
+  </Folder>
+  <Folder Name="/Presentation/">
+    <Project Path="../Presentation/WebApplication1/Fitness_club.WebHost.csproj" Id="f5efe41a-4265-4c39-9f2c-b27754db3b16" />
   </Folder>
   <Project Path="DomainApp/DomainApp.csproj" Id="bd7e6ca3-abf1-4b8d-9d84-492c189e78cf" />
 </Solution>
